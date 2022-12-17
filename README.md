@@ -3,7 +3,7 @@ This is the Julia code used to reproduce the simulations reported in a paper on 
 Our simulations may be reproduced by first running coherence_simulations.jl and following the steps as documented in the file.
 Then the results may be (re-)analyzed and the aggregated plots obtained by running auc_reanalyzer.jl.
 
-Note: csv files should be placed in folder "csvs" for the code to work. The generation takes long, so we also include the data in this repository.
+Note: data from the simulations in csv files should be placed in folder "csvs" for the code to work. The generation of the data takes long, so we also include the (fully reproducible) data in this repository.
 
 The plots reproduced in the paper are:
 
