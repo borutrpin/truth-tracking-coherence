@@ -73,9 +73,7 @@ function csv_to_out_ar(file::String,first::Int64=1,final::Int64=0)
         if final == 0
             final=Int64(csv_reader[length(csv_reader)][3])
         end
-        # out_ar = Array{Float64,3}(undef, 4, 20, final)
-        out_ar = Array{Float64,3}(undef, 9, 20, final)
-        # we use 9 dimensions because we simulated additional measures for another project.
+        out_ar = Array{Float64,3}(undef, 4, 20, final)
 
         #
         for i in first:Int64(final)
@@ -99,7 +97,7 @@ for file in files
 
 # then we run the loop to create
 
-for file in csv_files
+for file in csv_files[]
     aucPlot_from_csv("./"*file[1:end-3]*"pdf","./csvs/"*file,"",[],0,100,1)
 end
 
