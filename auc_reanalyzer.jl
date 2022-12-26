@@ -97,7 +97,7 @@ for file in files
 
 # then we run the loop to create
 
-for file in csv_files[]
+for file in csv_files
     aucPlot_from_csv("./"*file[1:end-3]*"pdf","./csvs/"*file,"",[],0,100,1)
 end
 
