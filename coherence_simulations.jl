@@ -84,16 +84,12 @@ suppressMessages(suppressWarnings(library(BayesFactor)))
     #generalised Olsson-Glass measure (Koscholke, Schippers, Stegmann, 2019)
     function olsstar_var(v::Vector{Float64},X...)
         pairs=nonoverlappingsubsets_v2(X)
-        as=[]
+        subset_coherences=[]
         for pair in pairs
-            if isempty(intersect(pair[1]...)) || isempty(intersect(pair[2]...))
-                a=0
-            else
-                a=ols_var(v,intersect(pair[1]...),intersect(pair[2]...)) + 0.5
-            push!(as,a)
-            end
+            push!(subset_coherences,ols_var(v,intersect(pair[1]...),intersect(pair[2]...)) + 0.5)
         end
-        return mean(as) -0.5
+    
+        return mean(subset_coherences) -0.5
     end
 
 end
