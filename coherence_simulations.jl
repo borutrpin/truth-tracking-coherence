@@ -84,23 +84,25 @@ suppressMessages(suppressWarnings(library(BayesFactor)))
     #generalised Olsson-Glass measure (Koscholke, Schippers, Stegmann, 2019)
     function olsstar_var(v::Vector{Float64},X...)
         pairs=nonoverlappingsubsets_v2(X)
-        subset_coherences=[]
+        as=[]
         for pair in pairs
-            push!(subset_coherences,ols_var(v,intersect(pair[1]...),intersect(pair[2]...)) + 0.5)
+            push!(as,ols_var(v,intersect(pair[1]...),intersect(pair[2]...)) + 0.5)
         end
-    
-        return mean(subset_coherences) -0.5
+        return mean(as) -0.5
     end
 
 end
 
-@everywhere function confSim_var_pre(ν::Int64,a0::Float64=0.3,n::Int64=3) # n = nr of pieces of information in a set
+@everywhere function confSim_var_pre(ν::Int64,a0::Float64=0.3,n::Int64=3,trueprops::Array{Int64,1}=[2,3]) # a0 = prior probability of the set (if a0 == 0, there is no fixed prior probability), n = nr of pieces of information in a set, trueprops: how many propositions do we require to be true (default: 2 or 3)
     @assert ν > 3 # no. of worlds with a minimum of 4 (in the actual analysis we look at minimum on 2n, where n is the number of pieces of information)
     which_Eworlds=[] # We want to know which worlds belong to pieces of evidence
     which_Pworlds=[] # Same for pieces of information.
     minimum_common_props=[] # We need at least one world in common to all pieces of information, otherwise the prior probability of the set would be necessarily 0.
     minimum_common_e=[] # Same for pieces of evidence: we assume that evidence is veristic and select the actual world from their intersection, so Es have to have at least one common possible worlds.
     probabilizedw=[] # We will need to keep in mind which worlds have been probabilized already.
+    need_to_restart=0
+    τ   = 1 # we designate a dummy actual world to store the variable
+    trueprop=0 # similarly for the number of true propositions
     for information_piece in 1:n
         howmanyP=rand(1:ν-1) # how many possible worlds under a piece of information: from 1 to ν-1 to avoid contradictions and tautologies
         howmanyE=rand(1:ν-1) # same for pieces of evidence
@@ -129,66 +131,37 @@ end
             push!(which_Eworlds,union(minimum_common_e,e1,e2))
         end
     end
-        d = zeros(ν) # we set up the probability distribution: first all worlds have zero probability
-        for (i,j) in zip(which_Pworlds,which_Eworlds)
-            e_and_p = intersect(j,i)
-            notp=setdiff(1:ν,i)
-            e_and_notp = intersect(i,notp)
-            for world in e_and_p
-                if world ∉ probabilizedw
-                    d[world] = rand()
-                    push!(probabilizedw,world)
-                end
-            end
-            for world in notp
-                if world ∉ probabilizedw
-                    d[world] = rand()
-                    push!(probabilizedw,world)
-                end
-            end
-            for world in e_and_notp
-                if world ∉ probabilizedw
-                    d[world] = rand()
-                    push!(probabilizedw,world)
-                end
-            end
-            for world in i
-                if world ∉ probabilizedw
-                    d[world] = rand()
-                    push!(probabilizedw,world)
-                end
-            end
-            # we start probabilizing the worlds in d appropriately, so that our requirements may be fulfilled
-            while sum(d[e_and_p])*sum(d[notp])-sum(d[e_and_notp])*sum(d[i])<=0
-                # if E doesn't confirm P we have to repeat the loop
-                for world in e_and_p
-                    if world ∉ probabilizedw
-                        d[world] = rand()
-                        push!(probabilizedw,world)
-                    end
-                end
-                for world in notp
-                    if world ∉ probabilizedw
-                        d[world] = rand()
-                        push!(probabilizedw,world)
-                    end
-                end
-                for world in e_and_notp
-                    if world ∉ probabilizedw
-                        d[world] = rand()
-                        push!(probabilizedw,world)
-                    end
-                end
-                for world in i
-                    if world ∉ probabilizedw
-                        d[world] = rand()
-                        push!(probabilizedw,world)
-                    end
-                end
-
+    d = zeros(ν) # we set up the probability distribution: first all worlds have zero probability
+    d2 = zeros(ν) # we need d2 later on for normalization
+    for (i,j) in zip(which_Pworlds,which_Eworlds)
+        e_and_p = intersect(j,i)
+        not_e=setdiff(1:ν,j)
+        not_e_and_p = intersect(i,not_e)
+        for world in e_and_p
+            if world ∉ probabilizedw
+                d[world] = rand()
+                push!(probabilizedw,world)
             end
         end
-
+        for world in not_e
+            if world ∉ probabilizedw
+                d[world] = rand()
+                push!(probabilizedw,world)
+            end
+        end
+        for world in not_e_and_p
+            if world ∉ probabilizedw
+                d[world] = rand()
+                push!(probabilizedw,world)
+            end
+        end
+        for world in j
+            if world ∉ probabilizedw
+                d[world] = rand()
+                push!(probabilizedw,world)
+            end
+        end
+        # we start probabilizing the worlds in d appropriately, so that our requirements may be fulfilled
         if setdiff(1:ν,probabilizedw)!=[] # in case any of the worlds has not yet been probabilized (note: all worlds have probability >0 in simulations), we have to probabilize them too
             for world in setdiff(1:ν,probabilizedw)
                 if world ∉ probabilizedw
@@ -197,45 +170,149 @@ end
                 end
             end
         end
-
-        d2=zeros(ν) # we will have to normalize distribution d as it may not necessarily sum to 1
-        a0worlds=intersect(which_Pworlds...) # which worlds will determine prior probability
-        normalizationquot=sum(d[a0worlds])/a0
-        for world in a0worlds
-            d2[world]=d[world]/normalizationquot
-        end
-        # we normalize prior probability (a0-worlds) to a0
-        nota0worlds=setdiff(1:ν,a0worlds)
-        normalizationquot=sum(d[nota0worlds])/(1-a0)
-        for world in nota0worlds
-            d2[world]=d[world]/normalizationquot
+        if a0>0
+            a0worlds=intersect(which_Pworlds...) # which worlds will determine prior probability
+            normalizationquot=sum(d[a0worlds])/a0
+            for world in a0worlds
+                d2[world]=d[world]/normalizationquot
+            end
+            # we normalize prior probability (a0-worlds) to a0
+            nota0worlds=setdiff(1:ν,a0worlds)
+            normalizationquot=sum(d[nota0worlds])/(1-a0)
+            for world in nota0worlds
+                d2[world]=d[world]/normalizationquot
+            end
+        else
+            d2=d
         end
         # then we also normalize the remaining worlds
-        τ   = sample(∩(which_Eworlds...)) # pick the actual world from E-worlds
-        trueprop=0
-        for prop in which_Pworlds
-            if issubset(τ,prop)
-                trueprop+=1
+        if sum(d2[e_and_p])*sum(d2[not_e])-sum(d2[not_e_and_p])*sum(d2[j])<=0
+            need_to_restart=1
+        end
+        if need_to_restart==0
+            τ   = sample(∩(which_Eworlds...)) # pick the actual world from E-worlds
+            trueprop=0
+            for prop in which_Pworlds
+                if issubset(τ,prop)
+                    trueprop+=1
+                end
+            end
+            if trueprop ∉ trueprops
+                need_to_restart=1
             end
         end
-        # count how many pieces of information are true (contain the actual E-world)
-
-        ol1 = ols_var(d2,which_Pworlds...)
-        ol2 = ols2_var(d2,which_Pworlds...)
-        ol3 = olssharp_var(d2,which_Pworlds...)
-        ol4 = olsstar_var(d2,which_Pworlds...)
-        # calculate overlap measures (ol1: standard Olsson-Glass, ol2: our generalization, ol3: Meijs' 2005 generalisation, ol4: Koscholke et al 2019 generalization)
-        return trueprop,ol1,ol2,ol3,ol4
+                # if E doesn't confirm P we have to repeat the loop or outside our true enough range.
     end
-
-@everywhere function confSim_var3(trueenough::Int64,trueprop::Int64,ol1::Float64,ol2::Float64,ol3::Float64,ol4::Float64)
-    # here we simply transform the number of true pieces of information into a categorical true (enough)/false (not true enough)
-    if trueprop>=trueenough
-        b=true
-    else
-        b=false
+    while need_to_restart==1
+        which_Eworlds=[]
+        which_Pworlds=[]
+        minimum_common_props=[]
+        minimum_common_e=[]
+        probabilizedw=[]
+        need_to_restart=0
+        for information_piece in 1:n
+            howmanyP=rand(1:ν-1)
+            howmanyE=rand(1:ν-1)
+            if minimum_common_props==[]
+                whichP=sample(1:ν, howmanyP, replace=false)
+                push!(minimum_common_props,sample(whichP))
+                push!(which_Pworlds,whichP)
+                push!(minimum_common_e,sample(whichP))
+                e2=sample(setdiff(1:ν,minimum_common_e), howmanyE-1, replace=false)
+                whichE=union(minimum_common_e,e2)
+                push!(which_Eworlds,whichE)
+            else
+                p2=sample(setdiff(1:ν,minimum_common_props), howmanyP-1, replace=false)
+                push!(which_Pworlds,union(minimum_common_props,p2))
+                e1=sample(last(which_Pworlds))
+                if e1==minimum_common_e
+                    minus=1
+                else
+                    minus=2
+                end
+                if howmanyE!=1
+                    e2=sample(setdiff(1:ν,minimum_common_e,e1), howmanyE-minus, replace=false)
+                else
+                    e2=[]
+                end
+                push!(which_Eworlds,union(minimum_common_e,e1,e2))
+            end
+        end
+        d = zeros(ν)
+        d2 = zeros(ν)
+        for (i,j) in zip(which_Pworlds,which_Eworlds)
+            e_and_p = intersect(j,i)
+            not_e=setdiff(1:ν,j)
+            not_e_and_p = intersect(i,not_e)
+            for world in e_and_p
+                if world ∉ probabilizedw
+                    d[world] = rand()
+                    push!(probabilizedw,world)
+                end
+            end
+            for world in not_e
+                if world ∉ probabilizedw
+                    d[world] = rand()
+                    push!(probabilizedw,world)
+                end
+            end
+            for world in not_e_and_p
+                if world ∉ probabilizedw
+                    d[world] = rand()
+                    push!(probabilizedw,world)
+                end
+            end
+            for world in j
+                if world ∉ probabilizedw
+                    d[world] = rand()
+                    push!(probabilizedw,world)
+                end
+            end
+            if setdiff(1:ν,probabilizedw)!=[]
+                for world in setdiff(1:ν,probabilizedw)
+                    if world ∉ probabilizedw
+                        d[world] = rand()
+                        push!(probabilizedw,world)
+                    end
+                end
+            end
+            if a0>0
+                a0worlds=intersect(which_Pworlds...)
+                normalizationquot=sum(d[a0worlds])/a0
+                for world in a0worlds
+                    d2[world]=d[world]/normalizationquot
+                end
+                nota0worlds=setdiff(1:ν,a0worlds)
+                normalizationquot=sum(d[nota0worlds])/(1-a0)
+                for world in nota0worlds
+                    d2[world]=d[world]/normalizationquot
+                end
+            else
+                d2=d
+            end
+            if sum(d2[e_and_p])*sum(d2[not_e])-sum(d2[not_e_and_p])*sum(d2[j])<=0
+                need_to_restart=1
+            end
+            if need_to_restart==0
+                τ   = sample(∩(which_Eworlds...)) # pick the actual world from E-worlds
+                trueprop=0
+                for prop in which_Pworlds
+                    if issubset(τ,prop)
+                        trueprop+=1
+                    end
+                end
+                if trueprop ∉ trueprops
+                    need_to_restart=1
+                end
+            end
+        end
     end
-    return b,ol1,ol2,ol3,ol4
+    ol1 = ols_var(d2,which_Pworlds...)
+    ol2 = ols2_var(d2,which_Pworlds...)
+    ol3 = olssharp_var(d2,which_Pworlds...)
+    ol4 = olsstar_var(d2,which_Pworlds...)
+    # calculate overlap measures (ol1: standard Olsson-Glass, ol2: our generalization, ol3: Meijs' 2005 generalisation, ol4: Koscholke et al 2019 generalization) and return how many propositions were true
+    return trueprop,ol1,ol2,ol3,ol4
 end
 
 
@@ -252,8 +329,46 @@ end
     return @rget auc
 end
 
-@everywhere function sims(n_worlds::Int64,a0::Float64,n_prop::Int64=3,trueEnoughProps::Array{Int64,1}=[3,4]) #
-    res   = [ confSim_var_pre(n_worlds,a0,n_prop) for _ in 1:1000]
+@everywhere function sims(n_worlds::Int64,a0::Float64,n_prop::Int64=3) #
+    trueEnoughProps=[n_prop-2,n_prop-1,n_prop]
+    n_sims=100
+    if n_prop <= 3
+        trueEnoughProps=[n_prop-1,n_prop]
+    end
+
+    res=[]
+    # we evenly look for sets with varying number of true propositions (from all false, to all true)
+    trueprops_needed=Array(1:n_prop)
+    if n_prop==2
+        trueprops_needed=Array(0:2)
+    end
+    nr_trueprops_needed=floor(Int64,n_sims/n_prop)
+    if n_prop == 6
+        nr_trueprops_needed=10
+    end
+    if n_prop >= 7
+        nr_trueprops_needed=5
+    end
+    # if n_prop is 7 or more, it gets too computationally extensive, so we just require a few of the variatons.
+    nr_trueprops_already=zeros(Int64,n_prop)
+    trueprops_already=[]
+
+    while trueprops_needed!=[]
+        simulation_result=confSim_var_pre(n_worlds,a0,n_prop,trueprops_needed)
+        nr_trueprops_already[simulation_result[1]]+=1
+        push!(res,simulation_result)
+        pos=1
+        for nr in nr_trueprops_already
+            if pos ∉ trueprops_already && nr>=nr_trueprops_needed
+                trueprops_needed=filter(i-> i ∉ [pos],trueprops_needed)
+                push!(trueprops_already,pos)
+            end
+            pos+=1
+        end
+    end
+    while length(res)<n_sims
+        push!(res,confSim_var_pre(n_worlds,a0,n_prop,Array(0:n_prop)))
+    end
     df_cf = DataFrame(res)
     dfs=[]
     for trueEnough in trueEnoughProps
@@ -275,19 +390,16 @@ end
 end
 
 function run_sim(numb_sim::Int64,a0::Float64,n_prop::Int64)
-    trueEnoughProps=Array{Int64,1}(undef,0)
-    for n in 1:n_prop
-        if n/n_prop>=.5
-            push!(trueEnoughProps,n)
-        end
+    trueEnoughProps=Array{Int64,1}([n_prop-2,n_prop-1,n_prop])
+    if n_prop==3
+        trueEnoughProps=[n_prop-1,n_prop]
     end
-    # for trueEnough threshold we look at at all cases with at least half pieces of information in a set presenting the true enough threshold
     outars1=Array{Any,3}(undef,length(trueEnoughProps),20,numb_sim)
     outars=[]
     for i in 1:numb_sim
         println(i)
         outars1[:,:,i] = @distributed (hcat) for n in 5:5:100
-            sims(n,a0,n_prop,trueEnoughProps)
+            sims(n,a0,n_prop)
         end
     end
     for thresh in 1:length(trueEnoughProps)
@@ -305,11 +417,11 @@ function aucPlot(name::String,out_auc::Array{Float64,3},trueenoughprops::Int64,n
     while range1%5>0
         range1+=1
     end
-    titula="True enough pieces of info: "*string(trueenoughprops)*" (of "*string(n_prop)*"), a0="*string(a0)
+    titula="True enough pieces of info: "*string(trueenoughprops)*" (of "*string(n_prop)*"), prior="*string(a0)
     trace1  = scatter(x=5:5:100, y=out_auc[1, :], mode="markers+lines", name="OG",marker=attr(symbol=0),line=attr(dash="dot"))
-    trace2  = scatter(x=5:5:100, y=out_auc[2, :], mode="markers+lines", name="OG-new",marker=attr(symbol=1))
+    trace2  = scatter(x=5:5:100, y=out_auc[2, :], mode="markers+lines", name="OG<sup>+</sup>",marker=attr(symbol=1))
     trace3  = scatter(x=5:5:100, y=out_auc[3, :], mode="markers+lines", name="OG'",marker=attr(symbol=2),line=attr(dash="dashdot"))
-    trace4  = scatter(x=5:5:100, y=out_auc[4, :], mode="markers+lines", name="OG*",marker=attr(symbol=3),line=attr(dash="dash"))
+    trace4  = scatter(x=5:5:100, y=out_auc[4, :], mode="markers+lines", name="OG<sup>*</sup>",marker=attr(symbol=3),line=attr(dash="dash"))
     layout  = Layout(width=850, height=510, margin=attr(l=80, r=10, t=50, b=70),
                      xaxis=attr(title="Number of worlds", tickfont=attr(size=18),range=[range1,100]), yaxis=attr(tickfont=attr(size=18)), font_size=20,
                      annotations=[(x=-0.15, y=.5, xref="paper", yref="paper", text="AUC", showarrow=false, textangle=-90, font=Dict(size=>21))],title=titula)
@@ -323,7 +435,7 @@ end
 # # uncomment below for a demo run that illustrates how we obtain the plots
 
 # n_prop=3
-# n_sim=10
+# n_sim=10p
 # a0=0.3
 # results=run_sim(n_sim,a0,n_prop);
 # out_ars = results[1];
@@ -382,9 +494,10 @@ end
 
 
 # # below, the script we used for the data used in the simulations (it takes a rather long time to run through)
+
 a0s = [0.1,0.3,0.5,0.7,0.9]
-num_pieces_of_information = [3,4,5,6,7]
+num_pieces_of_information = [2,3,4,5,6,7]
 for num in num_pieces_of_information
     println(num)
-    run_sims(250,a0s,num)
+    run_sims(100,a0s,num)
 end
