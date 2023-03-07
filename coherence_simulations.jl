@@ -435,7 +435,7 @@ end
 # # uncomment below for a demo run that illustrates how we obtain the plots
 
 # n_prop=3
-# n_sim=10p
+# n_sim=10
 # a0=0.3
 # results=run_sim(n_sim,a0,n_prop);
 # out_ars = results[1];
