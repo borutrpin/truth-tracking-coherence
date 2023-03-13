@@ -3,7 +3,9 @@ This is the Julia code used to reproduce the simulations reported in a paper on 
 Our simulations may be reproduced by first running coherence_simulations.jl and following the steps as documented in the file.
 Then the results may be (re-)analyzed and the aggregated plots obtained by running auc_reanalyzer.jl.
 
-Note: data from the simulations in csv files should be placed in folder "csvs" for auc_reanalyzer.jl to work. The generation of the data takes long, so we also include the (fully reproducible) AUC data in this repository. The script also exports additional data for each simulation at each number of possible worlds. This (fully reproducible) data altogether takes over 10 GB, so we omit it from the repository.
+Note: data from the simulations in csv files should be placed in folder "csvs/standard" for auc_reanalyzer.jl to work (or else pointed to this folder from Julia). The generation of the data takes long, so we also include the (fully reproducible) AUC data in this repository. 
+
+The script also exports additional data for each simulation at each number of possible worlds. This (fully reproducible) data altogether takes over 10 GB, so we omit it from the repository.
 
 The plots reproduced in the paper are:
 
@@ -33,4 +35,4 @@ YYY - prior probability of information
 
 Z - how many pieces of information must be true for the set to be considered true (enough)
 
-Note on Z: Although the paper omits this possibility, we also consider how good the measures of coherence are when we relax the requirement for a set to be considered to be true. Particularly, the set is currently true if all propositions (pieces of information) are true. However, we can also check what happens if a set is considered to be true when some propositions are false (e.g., a set with 5 true propositions out of 7 may count as true on this approach). This was included for exploration reasons only, but we include the plots and data for full transparency.
+Note on Z: Although the paper omits this possibility, we also consider how good the measures of coherence are when we relax the requirement for a set to be considered to be true. Particularly, the set is currently true if all propositions (pieces of information) are true. However, we can also check what happens if a set is considered to be true when some propositions are false (e.g., a set with 5 true propositions out of 7 may count as true on this approach). This was included for exploration reasons only, but we include the plots and data for full transparency. These can be found in the corresponding "trueenough-exploraton" folders.
