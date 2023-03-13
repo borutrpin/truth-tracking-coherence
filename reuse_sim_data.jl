@@ -176,11 +176,11 @@ function aucPlot(name::String,out_auc::Array{Float64,3},trueenoughprops::Int64,n
     trace2  = scatter(x=5:5:100, y=out_auc[2, :], mode="markers+lines", name="OG<sup>+</sup>",marker=attr(symbol=1))
     trace3  = scatter(x=5:5:100, y=out_auc[3, :], mode="markers+lines", name="OG'",marker=attr(symbol=2),line=attr(dash="dashdot"))
     trace4  = scatter(x=5:5:100, y=out_auc[4, :], mode="markers+lines", name="OG<sup>*</sup>",marker=attr(symbol=3),line=attr(dash="dash"))
-    trace4  = scatter(x=5:5:100, y=out_auc[5, :], mode="markers+lines", name="Shog",marker=attr(symbol=4),line=attr(dash="dot"))
+    trace5  = scatter(x=5:5:100, y=out_auc[5, :], mode="markers+lines", name="Shog",marker=attr(symbol=4),line=attr(dash="dot"))
     layout  = Layout(width=850, height=510, margin=attr(l=80, r=10, t=50, b=70),
                      xaxis=attr(title="Number of worlds", tickfont=attr(size=18),range=[range1,100]), yaxis=attr(tickfont=attr(size=18)), font_size=20,
                      annotations=[(x=-0.15, y=.5, xref="paper", yref="paper", text="AUC", showarrow=false, textangle=-90, font=Dict(size=>21))],title=titula)
-    data    = [trace1,trace3,trace4,trace2]
+    data    = [trace1,trace3,trace4,trace2,trace5]
     a=Plot(data, layout)
     if name[1] == '.' # if we are saving plots into current working directory, obtainable by > pwd(), changeable by cd("path")
         savefig(a,name)
