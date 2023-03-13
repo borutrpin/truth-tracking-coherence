@@ -5,7 +5,7 @@ Then the results may be (re-)analyzed and the aggregated plots obtained by runni
 
 Note: data from the simulations in csv files should be placed in folder "csvs/standard" for auc_reanalyzer.jl to work (or else pointed to this folder from Julia). The generation of the data takes long, so we also include the (fully reproducible) AUC data in this repository. 
 
-The script also exports additional data for each simulation at each number of possible worlds. This (fully reproducible) data altogether takes over 10 GB, so we omit it from the repository.
+The script also exports additional data for each simulation at each number of possible worlds. This (fully reproducible) data altogether takes over 10 GB, so we omit it from the repository. It can be analyzed further (without re-running the simulations) by running reuse_sim_data.jl
 
 The plots reproduced in the paper are:
 
