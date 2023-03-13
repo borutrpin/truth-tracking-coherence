@@ -3,6 +3,8 @@ using PlotlyJS
 using Distributed
 addprocs()
 @everywhere begin
+    using CSV
+    using DataFrames
     using Distributions
     using Combinatorics
     using DataStructures
@@ -17,6 +19,12 @@ suppressMessages(suppressWarnings(library(BayesFactor)))
 """
 
 @everywhere begin
+    function sho_var(v, X...)
+        ind=∩(X...)
+        s1 =sum(v[ind])
+        s2 = *([ sum(v[x]) for x in X]...)
+        return (s1 / s2)-1
+    end
 
     #Olsson-Glass measure of coherence
     ols_var(v::Vector{Float64},X...) = (sum(v[∩(X...)])/sum(v[union(X...)]) - 0.5)
@@ -307,12 +315,7 @@ end
             end
         end
     end
-    ol1 = ols_var(d2,which_Pworlds...)
-    ol2 = ols2_var(d2,which_Pworlds...)
-    ol3 = olssharp_var(d2,which_Pworlds...)
-    ol4 = olsstar_var(d2,which_Pworlds...)
-    # calculate overlap measures (ol1: standard Olsson-Glass, ol2: our generalization, ol3: Meijs' 2005 generalisation, ol4: Koscholke et al 2019 generalization) and return how many propositions were true
-    return trueprop,ol1,ol2,ol3,ol4
+    return trueprop,d2,which_Pworlds
 end
 
 
@@ -329,35 +332,44 @@ end
     return @rget auc
 end
 
-@everywhere function sims(n_worlds::Int64,a0::Float64,n_prop::Int64=3) #
+@everywhere function sims(n_worlds::Int64,a0::Float64,n_prop::Int64=3,nrsim::Int64=1)
+    inclusive_0true=0
     trueEnoughProps=[n_prop-2,n_prop-1,n_prop]
     n_sims=100
-    if n_prop <= 3
+    if n_prop <= 4
         trueEnoughProps=[n_prop-1,n_prop]
     end
-
     res=[]
     # we evenly look for sets with varying number of true propositions (from all false, to all true)
-    trueprops_needed=Array(1:n_prop)
-    if n_prop==2
-        trueprops_needed=Array(0:2)
+    if n_prop==2 || n_prop==3
+        inclusive_0true=1
+    elseif n_prop==4 || n_prop ==5
+        inclusive_0true=-1
+    elseif n_prop==6
+        inclusive_0true=-2
+    elseif n_prop==7
+        inclusive_0true=-3
     end
-    nr_trueprops_needed=floor(Int64,n_sims/n_prop)
-    if n_prop == 6
-        nr_trueprops_needed=10
-    end
-    if n_prop >= 7
-        nr_trueprops_needed=5
-    end
-    # if n_prop is 7 or more, it gets too computationally extensive, so we just require a few of the variatons.
-    nr_trueprops_already=zeros(Int64,n_prop)
+
+    trueprops_needed=Array(1-inclusive_0true:n_prop)
+    nr_trueprops_needed=floor(Int64,n_sims/(n_prop+inclusive_0true))
+    nr_trueprops_already=zeros(Int64,n_prop+inclusive_0true)
+
+    # the simulated cases should have varying number of cases where all, 1, 2, ..., n pieces of information are true.
+    # but due to computational expense of generating completely or almost completely false sets, we soften this requirement, so tha
+    # if n_prop is 2 or 3, we require equal parts of of no true proposition simulations, one true, ..., all true propositions simulations.
+    # if n_prop is 4 or 5, we omit the "all false" and "exactly one proposition true" requirement.
+    # if n_prop is 6, we additionally omit the "exactly two propositions true" requirement.
+    # if n_prop is 7, we additionally omit the "exactly three propositions true" requirement.
+    # the rest of the cases are then evenly spread with whatever does not add up to the nr of simulations (100) without any specific requirements.
+
     trueprops_already=[]
 
     while trueprops_needed!=[]
         simulation_result=confSim_var_pre(n_worlds,a0,n_prop,trueprops_needed)
-        nr_trueprops_already[simulation_result[1]]+=1
+        nr_trueprops_already[simulation_result[1]+inclusive_0true]+=1
         push!(res,simulation_result)
-        pos=1
+        pos=1-inclusive_0true
         for nr in nr_trueprops_already
             if pos ∉ trueprops_already && nr>=nr_trueprops_needed
                 trueprops_needed=filter(i-> i ∉ [pos],trueprops_needed)
@@ -369,7 +381,19 @@ end
     while length(res)<n_sims
         push!(res,confSim_var_pre(n_worlds,a0,n_prop,Array(0:n_prop)))
     end
-    df_cf = DataFrame(res)
+    csvdf = DataFrame(res)
+    outputstring=string("./simdata-n",n_prop,"-a0_",a0, "_n_worlds",n_worlds,"simnr_",nrsim,".csv")
+    csvdf |> CSV.write(outputstring, header = ["trueprop", "probdistr", "which_Pworlds"])
+    res2=[]
+    for run in res
+# calculate overlap measures (ol1: standard Olsson-Glass, ol2: our generalization, ol3: Meijs' 2005 generalisation, ol4: Koscholke et al 2019 generalization) and return how many propositions were true
+        ol1 = ols_var(run[2],run[3]...)
+        ol2 = ols2_var(run[2],run[3]...)
+        ol3 = olssharp_var(run[2],run[3]...)
+        ol4 = olsstar_var(run[2],run[3]...)
+        push!(res2,tuple(run[1],ol1,ol2,ol3,ol4))
+    end
+    df_cf = DataFrame(res2)
     dfs=[]
     for trueEnough in trueEnoughProps
         pos=1
@@ -389,9 +413,11 @@ end
     return dfs
 end
 
+
+
 function run_sim(numb_sim::Int64,a0::Float64,n_prop::Int64)
     trueEnoughProps=Array{Int64,1}([n_prop-2,n_prop-1,n_prop])
-    if n_prop==3
+    if n_prop <= 4
         trueEnoughProps=[n_prop-1,n_prop]
     end
     outars1=Array{Any,3}(undef,length(trueEnoughProps),20,numb_sim)
@@ -399,7 +425,7 @@ function run_sim(numb_sim::Int64,a0::Float64,n_prop::Int64)
     for i in 1:numb_sim
         println(i)
         outars1[:,:,i] = @distributed (hcat) for n in 5:5:100
-            sims(n,a0,n_prop)
+            sims(n,a0,n_prop,i)
         end
     end
     for thresh in 1:length(trueEnoughProps)
@@ -409,7 +435,7 @@ function run_sim(numb_sim::Int64,a0::Float64,n_prop::Int64)
         end
         push!(outars,temp)
     end
-    return outars,trueEnoughProps # outars[1] is out_ar for first trueEnoughPerc etc
+    return outars,trueEnoughProps
 end
 
 function aucPlot(name::String,out_auc::Array{Float64,3},trueenoughprops::Int64,n_prop::Int64,a0::Float64)
@@ -435,7 +461,7 @@ end
 # # uncomment below for a demo run that illustrates how we obtain the plots
 
 # n_prop=3
-# n_sim=10
+# n_sim=10p
 # a0=0.3
 # results=run_sim(n_sim,a0,n_prop);
 # out_ars = results[1];
@@ -452,7 +478,6 @@ end
 # #note: plotlyJS requires that you are connected to internet while initializing the module (in case of weird errors)
 
 # below we use a function to output data to csv, so we don't need to repeat the simulations all the time
-using CSV, DataFrames
 function arr_to_csv(x, outputstring)
     df = DataFrame(i = Float64[], j = Float64[], k = Float64[], x = Float64[])
     sizes = size(x)

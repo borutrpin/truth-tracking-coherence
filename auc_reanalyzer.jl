@@ -87,7 +87,7 @@ function csv_to_out_ar(file::String,first::Int64=1,final::Int64=0)
 
 
 # to run through all csvs, first
-files = readdir("./csvs")
+files = readdir("./csvs/standard/")
 csv_files = []
 for file in files
            if occursin("full.csv",file)
@@ -98,7 +98,7 @@ for file in files
 # then we run the loop to create
 
 for file in csv_files
-    aucPlot_from_csv("./"*file[1:end-3]*"pdf","./csvs/"*file,"",[],0,100,1)
+    aucPlot_from_csv("./plots/individual-runs/"*file[1:end-3]*"pdf","./csvs/standard/"*file,"",[],0,100,1)
 end
 
 function csv_files_cardinality(csv_files,n,howmanytrue=0)
@@ -226,12 +226,12 @@ function aucPlot_from_csvs(csv_files,n,a0,style,howmanytrue=0)
         titula2="all_n_and_all_a0_"*string(howmanytrue)
         range1=15
     end
-    aucPlot_from_csv("./auc-"*titula2*".pdf","",titula,files,range1,100,0)
+    aucPlot_from_csv("./plots/aggregations/auc-"*titula2*".pdf","",titula,files,range1,100,0)
 end
 
 csv_files2=[]
 for file in csv_files
-    push!(csv_files2,"./csvs/"*file)
+    push!(csv_files2,"./csvs/standard/"*file)
 end
 # below: demo run for 4 propositions
 # aucPlot_from_csvs(csv_files2,4,0.5,4,-1)
@@ -244,24 +244,23 @@ end
 for n in 2:7
     aucPlot_from_csvs(csv_files2,n,0.5,1,0)
 end
-for n in 2:7
-    aucPlot_from_csvs(csv_files2,n,0.5,1,-1)
-end
-for n in 4:7
-    aucPlot_from_csvs(csv_files2,n,0.5,1,-2)
-end
-
+# for n in 2:7
+#     aucPlot_from_csvs(csv_files2,n,0.5,1,-1)
+# end
+# for n in 4:7
+#     aucPlot_from_csvs(csv_files2,n,0.5,1,-2)
+# end
 for a0 in [0.1,0.3,0.5,0.7,0.9]
     aucPlot_from_csvs(csv_files2,4,a0,2,0) # note the 4 is irrelevant, it looks at all a0 for all n
 end
-
-for a0 in [0.1,0.3,0.5,0.7,0.9]
-    aucPlot_from_csvs(csv_files2,4,a0,2,-1)
-end
-
-for a0 in [0.1,0.3,0.5,0.7,0.9]
-    aucPlot_from_csvs(csv_files2,4,a0,2,-2)
-end
+#
+# for a0 in [0.1,0.3,0.5,0.7,0.9]
+#     aucPlot_from_csvs(csv_files2,4,a0,2,-1)
+# end
+#
+# for a0 in [0.1,0.3,0.5,0.7,0.9]
+#     aucPlot_from_csvs(csv_files2,4,a0,2,-2)
+# end
 aucPlot_from_csvs(csv_files2,4,2.0,3,0)
 
-aucPlot_from_csvs(csv_files2,4,2.0,4,-1)
+# aucPlot_from_csvs(csv_files2,4,2.0,4,-1)
