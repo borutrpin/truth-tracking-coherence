@@ -102,7 +102,7 @@ suppressMessages(suppressWarnings(library(BayesFactor)))
 end
 
 @everywhere function reuse_sim_data(n_prop::Int64=3,a0::Float64=0.5,n_worlds::Int64=5,nrsim::Int64=1)
-    filename = string("./simdata-n",n_prop,"-a0_",a0, "_n_worlds",n_worlds,"simnr_",nrsim,".csv")
+    filename = string("./data/simdata-n",n_prop,"-a0_",a0, "_n_worlds",n_worlds,"simnr_",nrsim,".csv")
     csv_reader= CSV.File(filename)
     res2=[]
     for run in csv_reader
