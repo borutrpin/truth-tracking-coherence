@@ -19,12 +19,6 @@ suppressMessages(suppressWarnings(library(BayesFactor)))
 """
 
 @everywhere begin
-    function sho_var(v, X...)
-        ind=∩(X...)
-        s1 =sum(v[ind])
-        s2 = *([ sum(v[x]) for x in X]...)
-        return (s1 / s2)-1
-    end
 
     #Olsson-Glass measure of coherence
     ols_var(v::Vector{Float64},X...) = (sum(v[∩(X...)])/sum(v[union(X...)]) - 0.5)
@@ -126,8 +120,7 @@ end
         ol2 = ols2_var(prob_distr,which_Pworlds...)
         ol3 = olssharp_var(prob_distr,which_Pworlds...)
         ol4 = olsstar_var(prob_distr,which_Pworlds...)
-        shog = sho_var(prob_distr,which_Pworlds...)
-        push!(res2,tuple(trueprops,ol1,ol2,ol3,ol4,shog))
+        push!(res2,tuple(trueprops,ol1,ol2,ol3,ol4))
     end
 
     df_cf = DataFrame(res2)
@@ -155,7 +148,7 @@ end
 end
 
 
-function rerun_sim(numb_sim::Int64,a0::Float64,n_prop::Int64,nr_measures::Int64=5)
+function rerun_sim(numb_sim::Int64,a0::Float64,n_prop::Int64,nr_measures::Int64=4)
     trueEnoughProps=Array{Int64,1}([n_prop-2,n_prop-1,n_prop])
     if n_prop <= 4
         trueEnoughProps=[n_prop-1,n_prop]
@@ -165,7 +158,7 @@ function rerun_sim(numb_sim::Int64,a0::Float64,n_prop::Int64,nr_measures::Int64=
     for i in 1:numb_sim
         println(i)
         outars1[:,:,i] = @distributed (hcat) for n in 5:5:100
-            reuse_sim_data(n_prop,a0,n,i,string("/Users/boruttrpin/Delo/julija/march2023-final/data/simdata-n",n_prop,"-a0_",a0, "_n_worlds",n,"simnr_",i,".csv"))
+            reuse_sim_data(n_prop,a0,n,i,string("./data/simdata-n",n_prop,"-a0_",a0, "_n_worlds",n,"simnr_",i,".csv"))
         end
     end
     for thresh in 1:length(trueEnoughProps)
@@ -188,11 +181,10 @@ function aucPlot(name::String,out_auc::Array{Float64,3},trueenoughprops::Int64,n
     trace2  = scatter(x=5:5:100, y=out_auc[2, :], mode="markers+lines", name="OG<sup>+</sup>",marker=attr(symbol=1))
     trace3  = scatter(x=5:5:100, y=out_auc[3, :], mode="markers+lines", name="OG'",marker=attr(symbol=2),line=attr(dash="dashdot"))
     trace4  = scatter(x=5:5:100, y=out_auc[4, :], mode="markers+lines", name="OG<sup>*</sup>",marker=attr(symbol=3),line=attr(dash="dash"))
-    trace5  = scatter(x=5:5:100, y=out_auc[5, :], mode="markers+lines", name="Shog",marker=attr(symbol=4),line=attr(dash="dot"))
     layout  = Layout(width=850, height=510, margin=attr(l=80, r=10, t=50, b=70),
                      xaxis=attr(title="Number of worlds", tickfont=attr(size=18),range=[range1,100]), yaxis=attr(tickfont=attr(size=18)), font_size=20,
                      annotations=[(x=-0.15, y=.5, xref="paper", yref="paper", text="AUC", showarrow=false, textangle=-90, font=Dict(size=>21))],title=titula)
-    data    = [trace1,trace3,trace4,trace2,trace5]
+    data    = [trace1,trace3,trace4,trace2]
     a=Plot(data, layout)
     if name[1] == '.' # if we are saving plots into current working directory, obtainable by > pwd(), changeable by cd("path")
         savefig(a,name)
