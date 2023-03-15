@@ -9,7 +9,7 @@ Note: data from the simulations in csv files should be placed in folder "csvs/st
 
 The script also exports additional data for each simulation at each number of possible worlds. This (fully reproducible) data altogether takes over 10 GB, so we omit it from the repository.
 
-The plots reproduced in the paper are:
+The plots used in the paper are:
 
 Figure 3:
 /plots/aggregations/auc-all_n_and_all_a0.pdf
