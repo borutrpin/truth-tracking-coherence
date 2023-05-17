@@ -163,7 +163,7 @@ function csv_to_out_ar(file::String,first::Int64=1,final::Int64=0)
 
 
 # to run through all csvs, first
-files = readdir("./csvs/standard/")
+files = readdir("./csvs/")
 csv_files = []
 for file in files
            if occursin("full.csv",file)
@@ -174,7 +174,7 @@ for file in files
 # then we run the loop to create
 
 for file in csv_files
-    aucPlot_from_csv("./plots/individual-runs/1"*file[1:end-3]*"pdf","./csvs/standard/"*file,"",[],0,100,1,1)
+    aucPlot_from_csv("./plots/individual-runs/1"*file[1:end-3]*"pdf","./csvs/"*file,"",[],0,100,1,1)
 end
 
 function csv_files_cardinality(csv_files,n,howmanytrue=0)
@@ -338,7 +338,7 @@ end
 
 csv_files2=[]
 for file in csv_files
-    push!(csv_files2,"./csvs/standard/"*file)
+    push!(csv_files2,"./csvs/"*file)
 end
 
 # below: a way to produce aggregated plots from csv files generated earlier in the other document (note: the csvs should be in folder "csvs")
