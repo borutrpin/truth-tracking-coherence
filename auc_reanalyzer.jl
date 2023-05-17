@@ -174,7 +174,7 @@ for file in files
 # then we run the loop to create
 
 for file in csv_files
-    aucPlot_from_csv("./plots/individual-runs/1"*file[1:end-3]*"pdf","./csvs/"*file,"",[],0,100,1,1)
+    aucPlot_from_csv("./plots/individual-runs/"*file[1:end-3]*"pdf","./csvs/"*file,"",[],0,100,1,1)
 end
 
 function csv_files_cardinality(csv_files,n,howmanytrue=0)
