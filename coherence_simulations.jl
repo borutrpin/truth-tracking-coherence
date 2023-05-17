@@ -343,7 +343,9 @@ end
     # we evenly look for sets with varying number of true propositions (from all false, to all true)
     if n_prop==2 || n_prop==3
         inclusive_0true=1
-    elseif n_prop==4 || n_prop ==5
+    elseif n_prop ==4
+        inclusive_0true=1
+    elseif n_prop ==5
         inclusive_0true=-1
     elseif n_prop==6
         inclusive_0true=-2
@@ -357,8 +359,8 @@ end
 
     # the simulated cases should have varying number of cases where all, 1, 2, ..., n pieces of information are true.
     # but due to computational expense of generating completely or almost completely false sets, we soften this requirement, so tha
-    # if n_prop is 2 or 3, we require equal parts of of no true proposition simulations, one true, ..., all true propositions simulations.
-    # if n_prop is 4 or 5, we omit the "all false" and "exactly one proposition true" requirement.
+    # if n_prop is 2 or 3 or 4 we require equal parts of of no true proposition simulations, one true, ..., all true propositions simulations.
+    # if n_prop is 5, we omit the "all false" and "exactly one proposition true" requirement.
     # if n_prop is 6, we additionally omit the "exactly two propositions true" requirement.
     # if n_prop is 7, we additionally omit the "exactly three propositions true" requirement.
     # the rest of the cases are then evenly spread with whatever does not add up to the nr of simulations (100) without any specific requirements.
@@ -522,6 +524,7 @@ end
 
 a0s = [0.1,0.3,0.5,0.7,0.9]
 num_pieces_of_information = [2,3,4,5,6,7]
+
 for num in num_pieces_of_information
     println(num)
     run_sims(100,a0s,num)
