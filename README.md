@@ -1,4 +1,4 @@
-This is the Julia code for the simulations reported in a paper Why Coherence Matters.
+This is the Julia code for the simulations reported in a paper Why Coherence Matters (published in The Journal of Philosophy).
 
 It is based on Igor Douven's code for simulations of confirmation measures (https://github.com/IgorDouven/Tracking), although adapted in many ways (described in the corresponding paper).
 
